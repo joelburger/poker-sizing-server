@@ -5,6 +5,10 @@ const wss = new WebSocketServer({port: 8080});
 
 let room;
 
+function convertPlayerMapToArray() {
+    room.playerList = Array.from(room.players.values());
+}
+
 function broadcast(message) {
     const serializedMessage = JSON.stringify(message);
     wss.clients.forEach(client => {
@@ -17,12 +21,24 @@ function broadcast(message) {
 function initialiseRoom() {
     room = {
         roomId: uuidv4(),
-        players: {}
+        players: new Map()
     };
 }
 
 function addPlayerToRoom(playerId, playerName) {
-    room.players[playerId] =  {id: playerId, name: playerName, estimate: null};
+    room.players.set(playerId,  {id: playerId, name: playerName, estimate: null});
+}
+
+function updatePlayerEstimate(playerId, estimate) {
+
+    if (!room.players.has(playerId)) {
+        console.error(`Player ${playerId} does not exist`);
+        return;
+    }
+
+    const player = room.players.get(playerId);
+
+    player.estimate = estimate;
 }
 
 initialiseRoom();
@@ -34,13 +50,19 @@ wss.on('connection', (socket) => {
         try {
             const event = JSON.parse(data);
             const {eventType, payload} = event;
-            const {playerId, playerName} = payload;
+            const {playerId} = payload;
+
             if (eventType === 'join-room') {
-                addPlayerToRoom(playerId, playerName);
-                broadcast({eventType: 'room-update', payload: room});
+                addPlayerToRoom(playerId, payload.playerName);
+            } else if (eventType === 'update-estimate') {
+                updatePlayerEstimate(playerId, payload.estimate);
             } else {
                 console.log('Unknown message type:', eventType);
+                return;
             }
+
+            convertPlayerMapToArray();
+            broadcast({eventType: 'room-update', payload: room});
         } catch (error) {
             console.error('Error processing message:', error);
         }
