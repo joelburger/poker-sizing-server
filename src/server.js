@@ -21,16 +21,33 @@ function broadcast(message) {
 function initialiseRoom() {
     room = {
         roomId: uuidv4(),
-        players: new Map()
+        players: new Map(),
+        status: 'PENDING',
+        summary: {}
     };
 }
 
 function addPlayerToRoom(playerId, playerName) {
-    room.players.set(playerId,  {id: playerId, name: playerName, estimate: null});
+    if (room.players.has(playerId)) {
+        const player = room.players.get(playerId);
+        player.name = playerName;
+    } else {
+        room.players.set(playerId, {id: playerId, name: playerName, estimate: null});
+    }
+}
+
+function resetRoom(playerId) {
+    console.log(`Player ${playerId} has reset the room`);
+    room.players.forEach(player => player.estimate = null);
+    room.status = 'PENDING';
+    room.summary = {};
+}
+
+function haveAllPlayersEstimated() {
+    return !Array.from(room.players.values()).some(player => player.estimate === null);
 }
 
 function updatePlayerEstimate(playerId, estimate) {
-
     if (!room.players.has(playerId)) {
         console.error(`Player ${playerId} does not exist`);
         return;
@@ -39,6 +56,27 @@ function updatePlayerEstimate(playerId, estimate) {
     const player = room.players.get(playerId);
 
     player.estimate = estimate;
+}
+
+function calculateSummary() {
+    const estimates = Array.from(room.players.values())
+        .map(player => player.estimate)
+        .filter(estimate => estimate !== null);
+
+    if (estimates.length === 0) {
+        return {mean: null, median: null};
+    }
+
+    const mean = Math.round(estimates.reduce((sum, value) => sum + value, 0) / estimates.length);
+
+    estimates.sort((a, b) => a - b);
+    const mid = Math.floor(estimates.length / 2);
+    const median = estimates.length % 2 === 0
+        ? (estimates[mid - 1] + estimates[mid]) / 2
+        : estimates[mid];
+
+    return {mean, median};
+
 }
 
 initialiseRoom();
@@ -56,9 +94,16 @@ wss.on('connection', (socket) => {
                 addPlayerToRoom(playerId, payload.playerName);
             } else if (eventType === 'update-estimate') {
                 updatePlayerEstimate(playerId, payload.estimate);
+            } else if (eventType === 'reset-room') {
+                resetRoom(playerId);
             } else {
                 console.log('Unknown message type:', eventType);
                 return;
+            }
+
+            if (haveAllPlayersEstimated()) {
+                room.status = "COMPLETED";
+                room.summary = calculateSummary();
             }
 
             convertPlayerMapToArray();
