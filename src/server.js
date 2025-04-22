@@ -44,7 +44,8 @@ function resetRoom(playerId) {
 }
 
 function haveAllPlayersEstimated() {
-    return !Array.from(room.players.values()).some(player => player.estimate === null);
+
+    return room.players.size > 0 && !Array.from(room.players.values()).some(player => player.estimate === null);
 }
 
 function updatePlayerEstimate(playerId, estimate) {
@@ -79,6 +80,19 @@ function calculateSummary() {
 
 }
 
+function removePlayer(deletePlayerId, playerId) {
+    if (room.players.has(deletePlayerId)) {
+        room.players.delete(deletePlayerId);
+        console.log(`Player ${deletePlayerId} has been removed from the room by ${playerId}`);
+    } else {
+        console.error(`Player ${deletePlayerId} does not exist in the room.`);
+    }
+
+    if (room.players.size === 0) {
+        resetRoom(playerId);
+    }
+}
+
 initialiseRoom();
 
 wss.on('connection', (socket) => {
@@ -96,6 +110,8 @@ wss.on('connection', (socket) => {
                 updatePlayerEstimate(playerId, payload.estimate);
             } else if (eventType === 'reset-room') {
                 resetRoom(playerId);
+            } else if (eventType === 'remove-player') {
+                removePlayer(payload.deletePlayerId, playerId);
             } else {
                 console.log('Unknown message type:', eventType);
                 return;
