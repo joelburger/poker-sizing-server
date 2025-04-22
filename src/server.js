@@ -44,8 +44,11 @@ function resetRoom(playerId) {
 }
 
 function haveAllPlayersEstimated() {
-
     return room.players.size > 0 && !Array.from(room.players.values()).some(player => player.estimate === null);
+}
+
+function roundToOneDecimal(value) {
+    return parseFloat(value.toFixed(1));
 }
 
 function updatePlayerEstimate(playerId, estimate) {
@@ -68,7 +71,7 @@ function calculateSummary() {
         return {mean: null, median: null};
     }
 
-    const mean = Math.round(estimates.reduce((sum, value) => sum + value, 0) / estimates.length);
+    const mean = roundToOneDecimal(estimates.reduce((sum, value) => sum + value, 0) / estimates.length);
 
     estimates.sort((a, b) => a - b);
     const mid = Math.floor(estimates.length / 2);
