@@ -1,7 +1,18 @@
 import {WebSocketServer, WebSocket} from 'ws';
 import {v4 as uuidv4} from 'uuid';
+import http from 'http';
 
-const wss = new WebSocketServer({port: 8080});
+const server = http.createServer((req, res) => {
+    if (req.url === '/healthz') {
+        res.writeHead(200);
+        res.end('OK');
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+});
+
+const wss = new WebSocketServer({server});
 
 let room;
 
@@ -103,11 +114,16 @@ wss.on('connection', (socket) => {
 
     socket.on('message', (data) => {
         try {
+
             const event = JSON.parse(data);
             const {eventType, payload} = event;
             const {playerId} = payload;
 
             if (eventType === 'join-room') {
+                if (!/^[A-Za-z]{1,40}$/.test(payload?.playerName)) {
+                    console.error('Invalid player name. It must contain only letters and be up to 40 characters long.');
+                    return;
+                }
                 addPlayerToRoom(playerId, payload.playerName);
             } else if (eventType === 'update-estimate') {
                 updatePlayerEstimate(playerId, payload.estimate);
@@ -139,4 +155,9 @@ wss.on('connection', (socket) => {
     socket.on('error', (error) => {
         console.error('WebSocket error:', error);
     });
+});
+
+const PORT = 8080;
+server.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
 });
