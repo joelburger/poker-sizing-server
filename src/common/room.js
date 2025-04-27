@@ -1,22 +1,29 @@
-import { v4 as uuidv4 } from 'uuid';
-import { calculateMean, calculateMedian } from '../math-util.js';
+import { calculateMean, calculateMedian } from './math-util.js';
 
-let room;
+const rooms = new Map();
 
-function initialiseRoom(roomId) {
-	room = {
-		roomId,
+function fetchRoom(sessionId) {
+	if (rooms.has(sessionId)) {
+		return rooms.get(sessionId);
+	}
+
+	const room = {
+		sessionId,
 		players: new Map(),
 		status: 'PENDING',
 		summary: {}
 	};
+
+	rooms.set(sessionId, room);
+
+	return room;
 }
 
-function haveAllPlayersEstimated() {
+function haveAllPlayersEstimated(room) {
 	return room.players.size > 0 && !Array.from(room.players.values()).some(player => player.estimate === null);
 }
 
-function calculateSummary() {
+function calculateSummary(room) {
 	const estimates = Array.from(room.players.values())
 		.map(player => player.estimate)
 		.filter(estimate => estimate !== null);
@@ -31,13 +38,13 @@ function calculateSummary() {
 	return { mean, median };
 }
 
-function finaliseRoomState() {
-	if (haveAllPlayersEstimated()) {
+function updateRoomStatus(room) {
+	if (haveAllPlayersEstimated(room)) {
 		room.status = 'COMPLETED';
-		room.summary = calculateSummary();
+		room.summary = calculateSummary(room);
 	}
 
 	room.playerList = Array.from(room.players.values());
 }
 
-export { initialiseRoom, finaliseRoomState, room };
+export { fetchRoom, updateRoomStatus };

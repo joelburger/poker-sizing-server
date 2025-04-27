@@ -1,9 +1,11 @@
-import { finaliseRoomState, room } from '../room.js';
+import { updateRoomStatus, fetchRoom } from '../common/room.js';
 
 export default function updateEstimate(payload) {
-  const {playerId, estimate} = payload
+  const {playerId, estimate, sessionId } = payload
 
 	console.log(`Player ${playerId} has voted ${estimate}.`);
+
+	const room = fetchRoom(sessionId);
 
 	if (!room.players.has(playerId)) {
 		console.error(`Player ${playerId} does not exist`);
@@ -14,5 +16,5 @@ export default function updateEstimate(payload) {
 
 	player.estimate = estimate;
 
-	finaliseRoomState();
+	updateRoomStatus(room);
 }

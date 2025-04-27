@@ -12,6 +12,8 @@ gcloud auth application-default login
 
 echo "Deployment started for project version: $version"
 
+echo "$version" > version.txt
+
 echo "Building project"
 
 docker build -t websocket-server:$version .

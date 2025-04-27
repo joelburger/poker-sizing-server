@@ -1,8 +1,10 @@
-import { finaliseRoomState, room } from '../room.js';
+import { updateRoomStatus, fetchRoom } from '../common/room.js';
 import resetRoom from './reset-room.js';
 
 export default function removePlayer(payload) {
-	const { deletePlayerId, playerId } = payload;
+	const { deletePlayerId, playerId, sessionId } = payload;
+
+	const room = fetchRoom(sessionId);
 
 	if (room.players.has(deletePlayerId)) {
 		room.players.delete(deletePlayerId);
@@ -15,5 +17,5 @@ export default function removePlayer(payload) {
 		resetRoom(playerId);
 	}
 
-	finaliseRoomState();
+	updateRoomStatus(room);
 }
