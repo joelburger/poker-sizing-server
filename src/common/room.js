@@ -1,6 +1,6 @@
 import { calculateMean, calculateMedian } from './math-util.js';
 
-const roomExpiryMs = process.env.ROOM_EXPIRY_MS || 60 * 60 * 1000; // 1 hour in milliseconds
+const roomExpiryMs = parseInt(process.env.ROOM_EXPIRY_MS) || 60 * 60 * 1000; // 1 hour in milliseconds
 const rooms = new Map();
 
 function deleteStaleRooms() {
@@ -25,6 +25,7 @@ function fetchRoom(sessionId) {
 		players: new Map(),
 		status: 'PENDING',
 		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 		summary: {}
 	};
 
