@@ -1,6 +1,19 @@
 import { calculateMean, calculateMedian } from './math-util.js';
 
+const roomExpiryMs = process.env.ROOM_EXPIRY_MS || 60 * 60 * 1000; // 1 hour in milliseconds
 const rooms = new Map();
+
+function deleteStaleRooms() {
+	const now = Date.now();
+
+	rooms.forEach((room, sessionId) => {
+		const lastUpdated = new Date(room.updatedAt).getTime();
+		if (now - lastUpdated > roomExpiryMs) {
+			console.log(`Deleting stale room with sessionId: ${sessionId}`);
+			rooms.delete(sessionId);
+		}
+	});
+}
 
 function fetchRoom(sessionId) {
 	if (rooms.has(sessionId)) {
@@ -11,6 +24,7 @@ function fetchRoom(sessionId) {
 		sessionId,
 		players: new Map(),
 		status: 'PENDING',
+		createdAt: new Date().toISOString(),
 		summary: {}
 	};
 
@@ -43,8 +57,8 @@ function updateRoomStatus(room) {
 		room.status = 'COMPLETED';
 		room.summary = calculateSummary(room);
 	}
-
+	room.updatedAt = new Date().toISOString();
 	room.playerList = Array.from(room.players.values());
 }
 
-export { fetchRoom, updateRoomStatus };
+export { fetchRoom, updateRoomStatus, deleteStaleRooms };

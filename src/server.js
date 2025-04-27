@@ -4,7 +4,7 @@ import joinRoom from './handlers/join-room.js';
 import updateEstimate from './handlers/update-estimate.js';
 import resetRoom from './handlers/reset-room.js';
 import removePlayer from './handlers/remove-player.js';
-import { fetchRoom } from './common/room.js';
+import { deleteStaleRooms, fetchRoom } from './common/room.js';
 import validateMessage from './common/schema-validator.js';
 
 const HEALTH_CHECK_PATH = process.env.HEALTH_CHECK_PATH || '/healthz';
@@ -73,6 +73,12 @@ function broadcast(message) {
 	});
 }
 
+function startCleanupJob() {
+	setInterval(() => {
+		deleteStaleRooms();
+	}, 60 * 1000);
+}
+
 wss.on('connection', (socket, request) => {
 	const clientAddress = request.socket.remoteAddress;
 	console.log(`A client connected from ${clientAddress}.`);
@@ -88,6 +94,9 @@ wss.on('connection', (socket, request) => {
 	});
 });
 
+startCleanupJob();
+
 server.listen(PORT, () => {
 	console.log(`Server listening on http://localhost:${PORT}`);
 });
+
