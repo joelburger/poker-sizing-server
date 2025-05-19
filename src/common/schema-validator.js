@@ -9,7 +9,7 @@ const messageSchema = {
 		payload: {
 			type: 'object',
 			properties: {
-				sessionId: { type: 'string', pattern: '^[a-zA-Z0-9-]+$' },
+				sessionId: { type: 'string', pattern: '^[a-zA-Z0-9-_]+$' },
 				playerId: { type: 'string', pattern: '^[a-zA-Z0-9-]+$' },
 				deletePlayerId: { type: 'string', pattern: '^[a-zA-Z0-9-]+$' },
 				estimate: { type: ['number', 'null'] },

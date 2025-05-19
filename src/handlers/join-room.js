@@ -1,6 +1,6 @@
-import { fetchRoom, updateRoomStatus } from '../common/room.js';
+import { fetchRoom, findPlayer, hasPlayer, updateRoom } from '../common/room.js';
 
-export default function joinRoom(payload) {
+export default async function joinRoom(payload) {
 	const { sessionId, playerId, playerName } = payload;
 
 	if (!/^[A-Za-z]{1,40}$/.test(playerName)) {
@@ -8,18 +8,18 @@ export default function joinRoom(payload) {
 		return;
 	}
 
-	const room = fetchRoom(sessionId);
+	const room = await fetchRoom(sessionId);
 
-	if (room.players.has(playerId)) {
+	if (hasPlayer(room, playerId)) {
 		console.log(`Player ${playerId} changed names.`);
 
-		const player = room.players.get(playerId);
+		const player = findPlayer(room, playerId);
 		player.name = playerName;
 	} else {
 		console.log(`Player ${playerId} joined room.`);
 
-		room.players.set(playerId, { id: playerId, name: playerName, estimate: null });
+		room.players.push({ id: playerId, name: playerName, estimate: null });
 	}
 
-	updateRoomStatus(room);
+	await updateRoom(room);
 }

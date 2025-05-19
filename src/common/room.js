@@ -1,47 +1,46 @@
 import { calculateMean, calculateMedian } from './math-util.js';
+import { getValue, setValue } from './redis-util.js';
+import { ROOM_EXPIRY_SECONDS } from './config.js';
 
-const roomExpiryMs = parseInt(process.env.ROOM_EXPIRY_MS) || 60 * 60 * 1000; // 1 hour in milliseconds
-const rooms = new Map();
-
-function deleteStaleRooms() {
-	const now = Date.now();
-
-	rooms.forEach((room, sessionId) => {
-		const lastUpdated = new Date(room.updatedAt).getTime();
-		if (now - lastUpdated > roomExpiryMs) {
-			console.log(`Deleting stale room with sessionId: ${sessionId}`);
-			rooms.delete(sessionId);
-		}
-	});
+function hasPlayer(room, playerId) {
+	return room.players.some((player) => player.id === playerId);
 }
 
-function fetchRoom(sessionId) {
-	if (rooms.has(sessionId)) {
-		return rooms.get(sessionId);
+function findPlayer(room, playerId) {
+	return room.players.find((player) => player.id === playerId);
+}
+
+function removePlayer(room, playerId) {
+	room.players = room.players.filter((player) => player.id !== playerId);
+}
+
+async function fetchRoom(sessionId) {
+	const room = await getValue(sessionId);
+
+	if (room) {
+		return room;
 	}
 
-	const room = {
+	const newRoom = {
 		sessionId,
-		players: new Map(),
+		players: [],
 		status: 'PENDING',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		summary: {}
+		summary: {},
 	};
 
-	rooms.set(sessionId, room);
+	await setValue(sessionId, newRoom, ROOM_EXPIRY_SECONDS);
 
-	return room;
+	return newRoom;
 }
 
 function haveAllPlayersEstimated(room) {
-	return room.players.size > 0 && !Array.from(room.players.values()).some(player => player.estimate === null);
+	return room.players.length > 0 && !room.players.some(player => player.estimate === null);
 }
 
 function calculateSummary(room) {
-	const estimates = Array.from(room.players.values())
-		.map(player => player.estimate)
-		.filter(estimate => estimate !== null);
+	const estimates = room.players.map(player => player.estimate).filter(estimate => estimate !== null);
 
 	if (estimates.length === 0) {
 		return { mean: null, median: null };
@@ -53,13 +52,26 @@ function calculateSummary(room) {
 	return { mean, median };
 }
 
-function updateRoomStatus(room) {
+async function updateRoom(room) {
 	if (haveAllPlayersEstimated(room)) {
 		room.status = 'COMPLETED';
 		room.summary = calculateSummary(room);
 	}
+
+	if (room.players.length === 0) {
+		room.status = 'PENDING';
+		room.summary = {};
+	}
+
 	room.updatedAt = new Date().toISOString();
-	room.playerList = Array.from(room.players.values());
+
+	await setValue(room.sessionId, room, ROOM_EXPIRY_SECONDS);
 }
 
-export { fetchRoom, updateRoomStatus, deleteStaleRooms };
+function resetVoting(room) {
+	room.players.forEach(player => player.estimate = null);
+	room.status = 'PENDING';
+	room.summary = {};
+}
+
+export { fetchRoom, updateRoom, hasPlayer, findPlayer, removePlayer, resetVoting };

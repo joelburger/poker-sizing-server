@@ -3,12 +3,11 @@ import http from 'http';
 import joinRoom from './handlers/join-room.js';
 import updateEstimate from './handlers/update-estimate.js';
 import resetRoom from './handlers/reset-room.js';
-import removePlayer from './handlers/remove-player.js';
-import { deleteStaleRooms, fetchRoom } from './common/room.js';
+import deletePlayer from './handlers/delete-player.js';
+import { fetchRoom } from './common/room.js';
 import validateMessage from './common/schema-validator.js';
-
-const HEALTH_CHECK_PATH = process.env.HEALTH_CHECK_PATH || '/healthz';
-const PORT = process.env.SERVER_PORT || 8080;
+import { connectToRedis, disconnectFromRedis } from './common/redis-util.js';
+import { HEALTH_CHECK_PATH, HTTP_SERVER_PORT, REDIS_URL } from './common/config.js';
 
 const EVENT_TYPES = {
 	JOIN_ROOM: 'join-room',
@@ -20,7 +19,7 @@ const EVENT_TYPES = {
 
 const eventHandlers = new Map([
 	[EVENT_TYPES.JOIN_ROOM, joinRoom],
-	[EVENT_TYPES.REMOVE_PLAYER, removePlayer],
+	[EVENT_TYPES.REMOVE_PLAYER, deletePlayer],
 	[EVENT_TYPES.RESET_ROOM, resetRoom],
 	[EVENT_TYPES.UPDATE_ESTIMATE, updateEstimate]
 ]);
@@ -37,7 +36,7 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server });
 
-function onMessageHandler(message) {
+async function onMessageHandler(message) {
 	try {
 		const event = JSON.parse(message);
 		const validationResult = validateMessage(event);
@@ -52,13 +51,14 @@ function onMessageHandler(message) {
 
 		const eventHandler = eventHandlers.get(eventType);
 		if (eventHandler) {
-			eventHandler(payload);
+			await eventHandler(payload);
 		} else {
 			console.error('Unknown message type:', eventType);
 			return;
 		}
 
-		broadcast({ eventType: EVENT_TYPES.ROOM_UPDATE, payload: fetchRoom(sessionId) });
+		const room = await fetchRoom(sessionId);
+		broadcast({ eventType: EVENT_TYPES.ROOM_UPDATE, payload: room });
 	} catch (error) {
 		console.error('Error processing message:', error);
 	}
@@ -71,12 +71,6 @@ function broadcast(message) {
 			client.send(serialisedMessage);
 		}
 	});
-}
-
-function startCleanupJob() {
-	setInterval(() => {
-		deleteStaleRooms();
-	}, 60 * 1000);
 }
 
 wss.on('connection', (socket, request) => {
@@ -94,9 +88,14 @@ wss.on('connection', (socket, request) => {
 	});
 });
 
-startCleanupJob();
-
-server.listen(PORT, () => {
-	console.log(`Server listening on http://localhost:${PORT}`);
+server.listen(HTTP_SERVER_PORT, () => {
+	connectToRedis(REDIS_URL).then(() => {
+		console.log(`Server listening on http://localhost:${HTTP_SERVER_PORT}`);
+	});
 });
 
+server.on('close', () => {
+	disconnectFromRedis().then(() => {
+		console.log('Server has stopped listening.');
+	});
+});

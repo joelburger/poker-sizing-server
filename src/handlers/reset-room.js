@@ -1,13 +1,12 @@
-import { fetchRoom } from '../common/room.js';
+import { fetchRoom, resetVoting, updateRoom } from '../common/room.js';
 
-export default function resetRoom(payload) {
+export default async function resetRoom(payload) {
 	const { playerId, sessionId } = payload;
 
 	console.log(`Player ${playerId} has reset the room`);
 
-	const room = fetchRoom(sessionId);
+	const room = await fetchRoom(sessionId);
+	resetVoting(room);
 
-	room.players.forEach(player => player.estimate = null);
-	room.status = 'PENDING';
-	room.summary = {};
+	await updateRoom(room);
 }
