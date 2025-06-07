@@ -7,6 +7,11 @@ Run the following command to authenticate with GCP using application default cre
 gcloud auth application-default login
 ```
 
+### Configuring Kubetcl
+```
+https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl#gcloud_1
+```
+
 ## Tag the Docker Image
 Tag the Docker image with the appropriate GCP Container Registry URL and version:
 ```bash

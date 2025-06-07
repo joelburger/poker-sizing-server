@@ -13,7 +13,8 @@ const messageSchema = {
 				playerId: { type: 'string', pattern: '^[a-zA-Z0-9-]+$' },
 				deletePlayerId: { type: 'string', pattern: '^[a-zA-Z0-9-]+$' },
 				estimate: { type: ['number', 'null'] },
-				playerName: { type: 'string', pattern: '^[a-zA-Z]{1,20}$' }
+				playerName: { type: 'string', pattern: '^[a-zA-Z]{1,20}$' },
+				avatar: { type: ['string', 'null']},
 			},
 			required: ['sessionId', 'playerId'],
 			additionalProperties: false

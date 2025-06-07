@@ -1,0 +1,1 @@
+docker run -d -p 8080:8080 --name poker-sizing-server poker-sizing-server:v0.1.8
